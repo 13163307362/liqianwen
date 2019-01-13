@@ -1,0 +1,85 @@
+
+
+```{r}
+##############对qq聊天记录做数据分析#############
+#########################################
+
+setwd("C:/Users/Administrator/Desktop/zuoyeexample") 
+file_data<-read.table(file = "作业17统数学院研究生群.txt",stringsAsFactors=FALSE,encoding="UTF-8",sep="\n",quote=NULL)
+class(file_data)
+
+
+data <- data.frame(user_name = c(), datetime = c(), text = c())
+user_name <- character()
+datetime <- character()
+text <- character()
+dim(file_data)
+dim(data)
+for(i in 1:dim(file_data)[1]){
+  dt_pattern <-regexpr('[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]+:[0-9]+:[0-9]+',file_data[i,])
+  if(dt_pattern== 1){
+    user_begin <- dt_pattern+attr(dt_pattern,'match.length') + 1
+    user_end <- nchar(file_data[i,]) 
+    user_name <- substring(file_data[i,],user_begin,user_end)#substring返回一个新的字符串
+    dt_begin <- dt_pattern
+    dt_end <- dt_pattern+attr(dt_pattern,'match.length')-1
+    datetime <- substring(file_data[i,],dt_begin,dt_end)
+    text <- file_data[i+1,] 
+    data <- rbind(data, data.frame(Name = user_name,datetime = datetime,text = text))  }else if (dt_pattern== -1) {i=i+1}
+  }  
+  
+
+
+data$user_name <- as.character(data$Name)
+ 
+data$text <- as.character(data$text)
+
+data$datetime <- as.POSIXlt(data$datetime)
+
+data <- transform(data,                   
+                  year = datetime$year+1900,                  
+                  month = datetime$mon+1,                  
+                  day = datetime$mday,                  
+                  hour = datetime$hour,                  
+                  min = datetime$min,                 
+                  sec = datetime$sec)
+data$datetime <- as.character(data$datetime)
+head(data)
+install.packages("sqldf")
+install.packages("lubridate")
+install.packages("ggplot2")
+install.packages("ggthemes")
+library(sqldf)
+library(lubridate)
+library(ggplot2)
+library(ggthemes)
+my.data1 <- sqldf('select month,day,count(*) Freq from data group by month,day')
+my.data1
+
+
+p1 <- ggplot(data = my.data1, mapping = aes(x = factor(day), y = factor(month), fill = Freq))
+p1 <- p1 + geom_tile() + scale_fill_gradient(low = 'steelblue', high = 'darkred')
+p1
+df <- as.data.frame(table(data$Name) )  
+names(df)[1]='Name'
+top10 <- df[order(df$Freq, decreasing = TRUE),][1:10,] 
+
+
+p2 <- ggplot(data = top10, mapping = aes(x = Name, weight = Freq, fill = Name)) + xlab(NULL) + ylab(NULL)
+p2 <- p2 + geom_bar() + coord_flip() +scale_fill_manual(values = rainbow(10), guide = FALSE)
+p2
+p3 <- ggplot(data = top10)+ xlab(NULL) + ylab(NULL)
+p3 <- p3 + geom_bar(aes(x = reorder(Name, Freq), y = Freq, fill = Name), stat="identity") + coord_flip()
+p3
+my.data3 <- sqldf('select Name,hour,count(*) Freq from data where Name in (select Name from top10) group by Name,hour')
+
+
+p4 <- ggplot(data = my.data3, mapping = aes(x = hour, y = Freq, fill = Name))
+p4 <- p4 + geom_area() + facet_wrap(~Name) + scale_fill_manual(values = rainbow(46), guide = FALSE)
+p4
+
+
+
+
+```
+
